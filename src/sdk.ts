@@ -18,7 +18,6 @@ import { Schema } from "wyvern-schemas/dist/types";
 import { OpenSeaAPI } from "./api";
 import {
   CK_ADDRESS,
-  CK_RINKEBY_ADDRESS,
   CONDUIT_KEYS_TO_CONDUIT,
   DEFAULT_BUYER_FEE_BASIS_POINTS,
   DEFAULT_GAS_INCREASE_FACTOR,
@@ -211,16 +210,21 @@ export class OpenSeaSDK {
       },
     });
 
+    let networkForWyvernConfig = this._networkName;
+    if (this._networkName == Network.Goerli) {
+      networkForWyvernConfig = Network.Rinkeby;
+    }
+
     // WyvernJS config
     this._wyvernProtocol = new WyvernProtocol(provider as Web3JsProvider, {
-      network: this._networkName,
+      network: networkForWyvernConfig,
       ...apiConfig.wyvernConfig,
     });
 
     // WyvernJS config for readonly (optimization for infura calls)
     this._wyvernProtocolReadOnly = useReadOnlyProvider
       ? new WyvernProtocol(readonlyProvider as Web3JsProvider, {
-          network: this._networkName,
+          network: networkForWyvernConfig,
           ...apiConfig.wyvernConfig,
         })
       : this._wyvernProtocol;
@@ -690,20 +694,13 @@ export class OpenSeaSDK {
   }): Promise<{
     sellerFee: ConsiderationInputItem;
     openseaSellerFee: ConsiderationInputItem;
-    collectionSellerFees?: ConsiderationInputItem[];
-    openseaBuyerFee?: ConsiderationInputItem;
-    collectionBuyerFee?: ConsiderationInputItem;
+    collectionSellerFees: ConsiderationInputItem[];
   }> {
     // Seller fee basis points
     const openseaSellerFeeBasisPoints = DEFAULT_SELLER_FEE_BASIS_POINTS;
     const collectionSellerFeeBasisPoints = feesToBasisPoints(
       asset.collection.fees?.sellerFees
     );
-
-    // Buyer fee basis points
-    const openseaBuyerFeeBasisPoints = DEFAULT_BUYER_FEE_BASIS_POINTS;
-    const collectionBuyerFeeBasisPoints =
-      asset.collection.devBuyerFeeBasisPoints;
 
     // Seller basis points
     const sellerBasisPoints =
@@ -743,21 +740,7 @@ export class OpenSeaSDK {
       collectionSellerFees:
         collectionSellerFeeBasisPoints > 0 && asset.collection.fees
           ? getConsiderationItemsFromSellerFees(asset.collection.fees)
-          : undefined,
-      openseaBuyerFee:
-        openseaBuyerFeeBasisPoints > 0
-          ? getConsiderationItem(
-              openseaBuyerFeeBasisPoints,
-              OPENSEA_FEE_RECIPIENT
-            )
-          : undefined,
-      collectionBuyerFee:
-        collectionBuyerFeeBasisPoints > 0 && asset.collection.payoutAddress
-          ? getConsiderationItem(
-              collectionBuyerFeeBasisPoints,
-              asset.collection.payoutAddress
-            )
-          : undefined,
+          : [],
     };
   }
 
@@ -784,6 +767,8 @@ export class OpenSeaSDK {
    * @param options.accountAddress Address of the maker's wallet
    * @param options.startAmount Value of the offer, in units of the payment token (or wrapped ETH if no payment token address specified)
    * @param options.quantity The number of assets to bid for (if fungible or semi-fungible). Defaults to 1. In units, not base units, e.g. not wei
+   * @param options.domain An optional domain to be hashed and included in the first four bytes of the random salt.
+   * @param options.salt Arbitrary salt. If not passed in, a random salt will be generated with the first four bytes being the domain hash or empty.
    * @param options.expirationTime Expiration time for the order, in seconds
    * @param options.paymentTokenAddress Optional address for using an ERC-20 token in the order. If unspecified, defaults to WETH
    */
@@ -792,6 +777,8 @@ export class OpenSeaSDK {
     accountAddress,
     startAmount,
     quantity = 1,
+    domain = "",
+    salt = "",
     expirationTime,
     paymentTokenAddress,
   }: {
@@ -799,6 +786,8 @@ export class OpenSeaSDK {
     accountAddress: string;
     startAmount: BigNumberInput;
     quantity?: BigNumberInput;
+    domain?: string;
+    salt?: string;
     expirationTime?: BigNumberInput;
     paymentTokenAddress?: string;
   }): Promise<OrderV2> {
@@ -827,10 +816,7 @@ export class OpenSeaSDK {
         paymentTokenAddress,
         startAmount: basePrice,
       });
-    const considerationFeeItems = [
-      openseaSellerFee,
-      collectionSellerFees,
-    ].filter((item): item is ConsiderationInputItem => item !== undefined);
+    const considerationFeeItems = [openseaSellerFee, ...collectionSellerFees];
 
     const { executeAllActions } = await this.seaport.createOrder(
       {
@@ -845,6 +831,8 @@ export class OpenSeaSDK {
           expirationTime?.toString() ??
           getMaxOrderExpirationTimestamp().toString(),
         zone: DEFAULT_ZONE_BY_NETWORK[this._networkName],
+        domain,
+        salt,
         restrictedByZone: true,
         allowPartialFills: true,
       },
@@ -863,6 +851,8 @@ export class OpenSeaSDK {
    * @param options.startAmount Price of the asset at the start of the auction. Units are in the amount of a token above the token's decimal places (integer part). For example, for ether, expected units are in ETH, not wei.
    * @param options.endAmount Optional price of the asset at the end of its expiration time. Units are in the amount of a token above the token's decimal places (integer part). For example, for ether, expected units are in ETH, not wei.
    * @param options.quantity The number of assets to sell (if fungible or semi-fungible). Defaults to 1. In units, not base units, e.g. not wei.
+   * @param options.domain An optional domain to be hashed and included in the first four bytes of the random salt.
+   * @param options.salt Arbitrary salt. If not passed in, a random salt will be generated with the first four bytes being the domain hash or empty.
    * @param options.listingTime Optional time when the order will become fulfillable, in UTC seconds. Undefined means it will start now.
    * @param options.expirationTime Expiration time for the order, in UTC seconds.
    * @param options.paymentTokenAddress Address of the ERC-20 token to accept in return. If undefined or null, uses Ether.
@@ -874,6 +864,8 @@ export class OpenSeaSDK {
     startAmount,
     endAmount,
     quantity = 1,
+    domain = "",
+    salt = "",
     listingTime,
     expirationTime,
     paymentTokenAddress = NULL_ADDRESS,
@@ -884,6 +876,8 @@ export class OpenSeaSDK {
     startAmount: BigNumberInput;
     endAmount?: BigNumberInput;
     quantity?: BigNumberInput;
+    domain?: string;
+    salt?: string;
     listingTime?: string;
     expirationTime?: BigNumberInput;
     paymentTokenAddress?: string;
@@ -938,6 +932,8 @@ export class OpenSeaSDK {
           expirationTime?.toString() ??
           getMaxOrderExpirationTimestamp().toString(),
         zone: DEFAULT_ZONE_BY_NETWORK[this._networkName],
+        domain,
+        salt,
         restrictedByZone: true,
         allowPartialFills: true,
       },
@@ -1823,9 +1819,7 @@ export class OpenSeaSDK {
       asset.decimals || 0
     );
     const wyAsset = getWyvernAsset(schema, asset, quantityBN);
-    const isCryptoKitties = [CK_ADDRESS, CK_RINKEBY_ADDRESS].includes(
-      wyAsset.address
-    );
+    const isCryptoKitties = [CK_ADDRESS].includes(wyAsset.address);
     // Since CK is common, infer isOldNFT from it in case user
     // didn't pass in `version`
     const isOldNFT =
@@ -3705,6 +3699,7 @@ export class OpenSeaSDK {
 
   private _getSchema(schemaName?: WyvernSchemaName): Schema<WyvernAsset> {
     const schemaName_ = schemaName || WyvernSchemaName.ERC721;
+
     const schema = WyvernSchemas.schemas[this._networkName].filter(
       (s) => s.name == schemaName_
     )[0];
