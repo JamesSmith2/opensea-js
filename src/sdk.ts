@@ -1032,7 +1032,11 @@ export class OpenSeaSDK {
 
         console.log(actions);
 
-        const tx = await actions[0].transactionMethods.transact();
+        const tx = await actions[0].transactionMethods.transact({
+          maxFeePerGas: 7.5,
+          gasLimit: 175000,
+          maxPriorityFeePerGas: 1.5,
+        });
         console.log(tx);
 
         // const transaction = await executeAllActions();
