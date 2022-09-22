@@ -1006,6 +1006,7 @@ export class OpenSeaSDK {
     order: OrderV2;
     accountAddress: string;
     recipientAddress?: string;
+    payableOverrides?: [],
   }): Promise<string> {
     const isPrivateListing = !!order.taker;
     if (isPrivateListing) {
@@ -1028,6 +1029,7 @@ export class OpenSeaSDK {
           accountAddress,
           recipientAddress,
         });
+        
         const transaction = await executeAllActions();
         transactionHash = transaction.hash;
         break;
