@@ -1024,15 +1024,17 @@ export class OpenSeaSDK {
     switch (order.protocolAddress) {
       case CROSS_CHAIN_SEAPORT_ADDRESS: {
 
-        const { executeAllActions } = await this.seaport.fulfillOrder({
+        const { actions } = await this.seaport.fulfillOrder({
           order: order.protocolData,
           accountAddress,
           recipientAddress,
         });
 
-        console.log(executeAllActions.length);
+        console.log(actions[0]);
 
-        const transaction = await executeAllActions();
+        console.log(actions.length);
+
+        const transaction = await actions();
         transactionHash = transaction.hash;
         break;
       }
