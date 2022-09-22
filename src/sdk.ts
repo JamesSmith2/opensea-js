@@ -1030,7 +1030,7 @@ export class OpenSeaSDK {
           recipientAddress,
         });
 
-        console.log(actions.length);
+        console.log(actions);
 
         // const transaction = await executeAllActions();
         // transactionHash = transaction.hash;
