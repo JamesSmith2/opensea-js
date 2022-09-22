@@ -1006,7 +1006,6 @@ export class OpenSeaSDK {
     order: OrderV2;
     accountAddress: string;
     recipientAddress?: string;
-    payableOverrides?: [],
   }): Promise<string> {
     const isPrivateListing = !!order.taker;
     if (isPrivateListing) {
@@ -1024,18 +1023,14 @@ export class OpenSeaSDK {
     let transactionHash: string;
     switch (order.protocolAddress) {
       case CROSS_CHAIN_SEAPORT_ADDRESS: {
+
         const { executeAllActions } = await this.seaport.fulfillOrder({
           order: order.protocolData,
           accountAddress,
           recipientAddress,
         });
 
-        let overrides = {
-          maxFeePerGas: 7.5,
-          maxPriorityFeePerGas: 1.5,
-        }
-        
-        const transaction = await executeAllActions({overrides});
+        const transaction = await executeAllActions();
         transactionHash = transaction.hash;
         break;
       }
