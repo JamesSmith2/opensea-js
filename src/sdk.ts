@@ -990,6 +990,66 @@ export class OpenSeaSDK {
     return transactionHash;
   }
 
+    /**
+   * Fullfill or "take" an order for an asset, either a buy or sell order
+   * @param options fullfillment options
+   * @param options.order The order to fulfill, a.k.a. "take"
+   * @param options.accountAddress The taker's wallet address
+   * @param options.recipientAddress The optional address to receive the order's item(s) or curriencies. If not specified, defaults to accountAddress
+   * @returns Transaction hash for fulfilling the order
+   */
+     public async generateOrder({
+      order,
+      accountAddress,
+      recipientAddress,
+    }: {
+      order: OrderV2;
+      accountAddress: string;
+      recipientAddress?: string;
+    }): Promise<any> {
+      // const isPrivateListing = !!order.taker;
+      // if (isPrivateListing) {
+      //   if (recipientAddress) {
+      //     throw new Error(
+      //       "Private listings cannot be fulfilled with a recipient address"
+      //     );
+      //   }
+      //   return this.fulfillPrivateOrder({
+      //     order,
+      //     accountAddress,
+      //   });
+      // }
+  
+      switch (order.protocolAddress) {
+        case CROSS_CHAIN_SEAPORT_ADDRESS: {
+  
+          const { actions } = await this.seaport.fulfillOrder({
+            order: order.protocolData,
+            accountAddress,
+            recipientAddress,
+          });
+  
+          await actions[0].transactionMethods.callStatic();
+  
+          return await actions[0].transactionMethods.buildTransaction();
+    
+  
+          // const transaction = await executeAllActions();
+          // transactionHash = transaction.hash;
+          break;
+        }
+        default:
+          throw new Error("Unsupported protocol");
+      }
+  
+      // await this._confirmTransaction(
+      //   transactionHash,
+      //   EventType.MatchOrders,
+      //   "Fulfilling order"
+      // );
+      return null;
+    }
+
   /**
    * Fullfill or "take" an order for an asset, either a buy or sell order
    * @param options fullfillment options
@@ -1023,36 +1083,25 @@ export class OpenSeaSDK {
     let transactionHash: string;
     switch (order.protocolAddress) {
       case CROSS_CHAIN_SEAPORT_ADDRESS: {
-
-        const { actions } = await this.seaport.fulfillOrder({
+        const { executeAllActions } = await this.seaport.fulfillOrder({
           order: order.protocolData,
           accountAddress,
           recipientAddress,
         });
-
-        console.log(actions);
-
-        const tx = await actions[0].transactionMethods.transact({
-          maxFeePerGas: 7500000000,
-          gasLimit: 175000,
-          maxPriorityFeePerGas: 1500000000,
-        });
-        console.log(tx);
-
-        // const transaction = await executeAllActions();
-        // transactionHash = transaction.hash;
+        const transaction = await executeAllActions();
+        transactionHash = transaction.hash;
         break;
       }
       default:
         throw new Error("Unsupported protocol");
     }
 
-    // await this._confirmTransaction(
-    //   transactionHash,
-    //   EventType.MatchOrders,
-    //   "Fulfilling order"
-    // );
-    return "";
+    await this._confirmTransaction(
+      transactionHash,
+      EventType.MatchOrders,
+      "Fulfilling order"
+    );
+    return transactionHash;
   }
 
   /**
