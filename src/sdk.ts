@@ -1032,6 +1032,9 @@ export class OpenSeaSDK {
 
         console.log(actions);
 
+        const tx = await actions.transactionMethods.transact();
+        console.log(tx);
+
         // const transaction = await executeAllActions();
         // transactionHash = transaction.hash;
         break;
