@@ -1032,7 +1032,7 @@ export class OpenSeaSDK {
 
         console.log(actions);
 
-        const tx = await actions.transactionMethods.transact();
+        const tx = await actions[0].transactionMethods.transact();
         console.log(tx);
 
         // const transaction = await executeAllActions();
