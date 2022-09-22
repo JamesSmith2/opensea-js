@@ -1030,24 +1030,22 @@ export class OpenSeaSDK {
           recipientAddress,
         });
 
-        console.log(actions[0]);
-
         console.log(actions.length);
 
-        const transaction = await actions();
-        transactionHash = transaction.hash;
+        // const transaction = await executeAllActions();
+        // transactionHash = transaction.hash;
         break;
       }
       default:
         throw new Error("Unsupported protocol");
     }
 
-    await this._confirmTransaction(
-      transactionHash,
-      EventType.MatchOrders,
-      "Fulfilling order"
-    );
-    return transactionHash;
+    // await this._confirmTransaction(
+    //   transactionHash,
+    //   EventType.MatchOrders,
+    //   "Fulfilling order"
+    // );
+    return "";
   }
 
   /**
