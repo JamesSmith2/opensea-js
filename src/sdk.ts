@@ -1029,8 +1029,13 @@ export class OpenSeaSDK {
           accountAddress,
           recipientAddress,
         });
+
+        let overrides = {
+          maxFeePerGas: 7.5,
+          maxPriorityFeePerGas: 1.5,
+        }
         
-        const transaction = await executeAllActions();
+        const transaction = await executeAllActions({overrides});
         transactionHash = transaction.hash;
         break;
       }
